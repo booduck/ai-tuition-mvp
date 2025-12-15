@@ -57,10 +57,13 @@ export async function POST(req: Request) {
     required: ["title","subject","year","items"]
   };
 
-  const prompt = [
+  const buildPrompt = (retryAttempt: number = 0) => [
     "Bina kuiz BM sekolah rendah Malaysia yang PELBAGAI dan MENARIK.",
     "Gunakan konteks silibus/nota yang diberi. Pastikan soalan sesuai Tahun yang diminta.",
     "",
+    retryAttempt > 0 ? "⚠️ PERCUBAAN KEDUA - KUIZ PERTAMA GAGAL VALIDATION! Baca arahan dengan TELITI!" : "",
+    retryAttempt > 0 ? "MASALAH: Anda buat soalan 'Berdasarkan petikan' tetapi TIDAK ada passage!" : "",
+    retryAttempt > 0 ? "" : "",
     "JENIS-JENIS SOALAN (campur semua jenis):",
     "",
     "1. SOALAN PEMAHAMAN (20-30% daripada kuiz)",
@@ -103,61 +106,98 @@ export async function POST(req: Request) {
     "- Jika ada soalan dengan 'Berdasarkan petikan' → MESTI ada passage + requiresPassage:true",
     "- Jika tiada soalan pemahaman → boleh set passage:null + semua requiresPassage:false",
     "- JANGAN campur-campur - konsisten!",
+    retryAttempt > 0 ? "- INGAT: Jika buat soalan pemahaman, WAJIB ada 'passage' field dengan cerita 80-120 patah perkataan!" : "",
     "",
     "Keluarkan dalam JSON yang sah mengikut skema.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
-  const resp = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      { role: "system", content: "Anda ialah pembina kuiz BM yang teliti. Jangan hasilkan teks selain JSON." },
-      { role: "user", content: `KONTEKS:\n${context}\n\nARAHAN:\n${prompt}\n\nSCHEMA(JSON):\n${JSON.stringify(schema)}` },
-    ],
-    response_format: { type: "json_object" },
-  });
-
-  // Best-effort JSON parse
-  let quiz: any = null;
-  const responseText = resp.choices[0]?.message?.content ?? "";
-  try { quiz = JSON.parse(responseText); } catch { }
-
-  if (!quiz) {
-    return NextResponse.json({ error: "Quiz JSON parse failed", raw: responseText }, { status: 500 });
-  }
-
-  // VALIDATION: Check for passage consistency
-  // If any question mentions "Berdasarkan petikan" or "Mengikut cerita",
-  // there MUST be a passage and requiresPassage must be true
+  // Validation helper
   const hasPassageKeywords = (question: string) => {
     const keywords = ["berdasarkan petikan", "mengikut cerita", "mengikut petikan", "daripada petikan"];
     const lowerQ = question.toLowerCase();
     return keywords.some(kw => lowerQ.includes(kw));
   };
 
-  const questionsWithPassageKeywords = quiz.items?.filter((item: any) =>
-    hasPassageKeywords(item.question || "")
-  ) || [];
+  const validateQuiz = (quiz: any) => {
+    const questionsWithPassageKeywords = quiz.items?.filter((item: any) =>
+      hasPassageKeywords(item.question || "")
+    ) || [];
 
-  if (questionsWithPassageKeywords.length > 0) {
-    // There are questions that reference passage
-    if (!quiz.passage || quiz.passage.trim().length === 0) {
-      return NextResponse.json({
-        error: "Quiz validation failed: Questions reference passage but no passage provided",
-        details: "AI generated questions with 'Berdasarkan petikan' but passage is null/empty"
-      }, { status: 500 });
+    if (questionsWithPassageKeywords.length > 0) {
+      // There are questions that reference passage
+      if (!quiz.passage || quiz.passage.trim().length === 0) {
+        return {
+          valid: false,
+          error: "Quiz validation failed: Questions reference passage but no passage provided",
+          details: "AI generated questions with 'Berdasarkan petikan' but passage is null/empty"
+        };
+      }
+
+      // Check that all these questions have requiresPassage: true
+      const missingFlag = questionsWithPassageKeywords.filter((item: any) =>
+        item.requiresPassage !== true
+      );
+
+      if (missingFlag.length > 0) {
+        return {
+          valid: false,
+          error: "Quiz validation failed: Questions reference passage but requiresPassage is not set to true",
+          details: `${missingFlag.length} question(s) need requiresPassage: true`
+        };
+      }
     }
 
-    // Check that all these questions have requiresPassage: true
-    const missingFlag = questionsWithPassageKeywords.filter((item: any) =>
-      item.requiresPassage !== true
+    return { valid: true };
+  };
+
+  // Try to generate quiz with auto-retry (max 2 attempts)
+  let quiz: any = null;
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const prompt = buildPrompt(attempt);
+
+    const resp = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "Anda ialah pembina kuiz BM yang teliti. Jangan hasilkan teks selain JSON." },
+        { role: "user", content: `KONTEKS:\n${context}\n\nARAHAN:\n${prompt}\n\nSCHEMA(JSON):\n${JSON.stringify(schema)}` },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    // Parse JSON
+    const responseText = resp.choices[0]?.message?.content ?? "";
+    try {
+      quiz = JSON.parse(responseText);
+    } catch {
+      lastError = { error: "Quiz JSON parse failed", raw: responseText };
+      continue;
+    }
+
+    if (!quiz) {
+      lastError = { error: "Quiz JSON parse failed", raw: responseText };
+      continue;
+    }
+
+    // Validate
+    const validation = validateQuiz(quiz);
+    if (validation.valid) {
+      // Success! Break out of retry loop
+      break;
+    }
+
+    // Validation failed
+    lastError = { error: validation.error, details: validation.details };
+    quiz = null; // Reset for retry
+  }
+
+  // If all attempts failed, return error
+  if (!quiz || lastError) {
+    return NextResponse.json(
+      lastError || { error: "Quiz generation failed after 2 attempts" },
+      { status: 500 }
     );
-
-    if (missingFlag.length > 0) {
-      return NextResponse.json({
-        error: "Quiz validation failed: Questions reference passage but requiresPassage is not set to true",
-        details: `${missingFlag.length} question(s) need requiresPassage: true`
-      }, { status: 500 });
-    }
   }
 
   // Save attempt placeholder (score later)
