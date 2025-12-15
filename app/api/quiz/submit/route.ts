@@ -51,23 +51,41 @@ export async function POST(req: Request) {
       // MCQ: exact match (case-insensitive)
       isCorrect = userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
     } else {
-      // Short answer: use AI to grade
+      // Short answer: use AI to grade with semantic understanding
       const gradingPrompt = `
+Anda adalah pengelas kuiz BM yang adil dan fleksibel. Nilai jawapan murid berdasarkan makna dan pemahaman, bukan hanya perkataan yang sama.
+
 Soalan: ${item.question}
-Jawapan betul: ${correctAnswer}
+Jawapan rujukan: ${correctAnswer}
 Jawapan murid: ${userAnswer}
 
-Adakah jawapan murid betul atau hampir betul? Jawab "BETUL" atau "SALAH" dan beri feedback ringkas dalam BM.
-Format: BETUL/SALAH | feedback
+PANDUAN PENILAIAN:
+- Terima jawapan jika makna dan konsep SAMA atau HAMPIR SAMA, walaupun perkataan berbeza
+- Terima sinonim dan frasa alternatif (contoh: "menjaga hati" = "menggembirakan hati" = "membuat gembira")
+- Terima jawapan yang lebih ringkas tetapi betul konsepnya
+- Fokus pada pemahaman murid, bukan kata demi kata
+
+Jawab "BETUL" jika:
+- Jawapan murid menunjukkan pemahaman yang betul
+- Maksud sama walaupun ayat berbeza
+- Menggunakan sinonim atau ungkapan yang setara
+
+Jawab "SALAH" hanya jika:
+- Konsep atau makna salah sepenuhnya
+- Jawapan tidak berkaitan dengan soalan
+- Salah faham yang jelas
+
+Format: BETUL/SALAH | feedback ringkas dalam BM
 `;
 
       try {
         const resp = await openai.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [
-            { role: "system", content: "Anda ialah pengelas kuiz BM yang adil." },
+            { role: "system", content: "Anda ialah pengelas kuiz BM yang bijak dan memahami pelbagai cara ungkapan. Terima jawapan berdasarkan makna, bukan ejaan tepat. Bersikap adil dan fleksibel." },
             { role: "user", content: gradingPrompt }
           ],
+          temperature: 0.3, // Lower temperature for more consistent grading
         });
 
         const output = resp.choices[0]?.message?.content?.trim() || "";
