@@ -1738,6 +1738,46 @@ ul li:last-child {
   box-shadow: 0 0 12px rgba(102, 126, 234, 0.6);
 }
 
+.quiz-passage-card {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.08));
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 24px;
+  padding: 24px;
+  backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
+}
+
+.passage-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.passage-icon {
+  font-size: 24px;
+}
+
+.passage-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.passage-text {
+  font-size: 16px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: pre-wrap;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  border-left: 4px solid rgba(99, 102, 241, 0.5);
+}
+
 .quiz-question-card {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.14);

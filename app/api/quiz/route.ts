@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       title: { type: "string" },
       subject: { type: "string" },
       year: { type: "number" },
+      passage: { type: "string" },
       items: {
         type: "array",
         items: {
@@ -52,14 +53,31 @@ export async function POST(req: Request) {
         }
       }
     },
-    required: ["title","subject","year","items"]
+    required: ["title","subject","year","passage","items"]
   };
 
   const prompt = [
-    "Bina kuiz BM sekolah rendah Malaysia.",
+    "Bina kuiz BM sekolah rendah Malaysia dengan PETIKAN TEKS.",
     "Gunakan konteks silibus/nota yang diberi. Pastikan soalan sesuai Tahun yang diminta.",
-    "Campur 60% MCQ dan 40% jawapan pendek.",
-    "Beri jawapan dan penerangan ringkas.",
+    "",
+    "FORMAT KUIZ:",
+    "1. WAJIB buat 'passage' (petikan teks bacaan) 100-200 patah perkataan yang sesuai dengan topik",
+    "2. Petikan mestilah cerita atau teks pemahaman yang menarik untuk murid baca",
+    "3. SEMUA soalan mesti merujuk kepada petikan tersebut",
+    "4. Campur 60% MCQ dan 40% jawapan pendek",
+    "5. Beri jawapan dan penerangan ringkas",
+    "",
+    "PENTING - Penggunaan petikan dalam soalan:",
+    "- WAJIB letak petikan tunggal '...' untuk simpulan bahasa (contoh: 'mengambil hati', 'buah tangan')",
+    "- WAJIB letak petikan tunggal '...' untuk peribahasa",
+    "- WAJIB letak petikan tunggal '...' untuk perkataan atau frasa yang dikaji",
+    "- Soalan mesti rujuk \"petikan\" atau \"teks di atas\" supaya murid tahu kena baca petikan",
+    "",
+    "Contoh struktur soalan yang BETUL:",
+    "- \"Berdasarkan petikan, apakah maksud simpulan bahasa 'mengambil hati'?\"",
+    "- \"Mengikut teks di atas, siapakah watak utama dalam cerita ini?\"",
+    "- \"Apakah pengajaran yang boleh kita dapat daripada petikan?\"",
+    "",
     `Topik: ${body.topic}`,
     `Kesukaran: ${body.difficulty}`,
     `Bilangan soalan: ${body.count}`,

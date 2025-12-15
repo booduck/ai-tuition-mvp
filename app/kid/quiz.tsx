@@ -22,6 +22,7 @@ type Quiz = {
   title: string;
   subject: string;
   year: number;
+  passage: string;
   items: QuizItem[];
 };
 
@@ -217,6 +218,19 @@ export default function QuizMode({ child, subject }: { child: ChildProfile; subj
                 style={{ width: `${((currentIndex + 1) / quiz.items.length) * 100}%` }}
               />
             </div>
+
+            {/* Passage Card - shown on every question */}
+            {quiz.passage && (
+              <div className="quiz-passage-card">
+                <div className="passage-header">
+                  <span className="passage-icon">📖</span>
+                  <h3 className="passage-title">Petikan</h3>
+                </div>
+                <div className="passage-text">
+                  {quiz.passage}
+                </div>
+              </div>
+            )}
 
             <div className="quiz-question-card">
               <div className="quiz-question-header">
