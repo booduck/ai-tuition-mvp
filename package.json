@@ -1,0 +1,26 @@
+{
+  "name": "ai-tuition-mvp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "next": "latest",
+    "openai": "^4.68.0",
+    "pdf-parse": "^2.4.5",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/pdf-parse": "^1.1.5",
+    "@types/react": "19.2.7",
+    "typescript": "5.9.3"
+  }
+}
