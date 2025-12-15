@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       title: { type: "string" },
       subject: { type: "string" },
       year: { type: "number" },
-      passage: { type: "string" },
+      passage: { type: ["string","null"] },
       items: {
         type: "array",
         items: {
@@ -47,41 +47,60 @@ export async function POST(req: Request) {
             question: { type: "string" },
             choices: { type: ["array","null"], items: { type: "string" } },
             answer: { type: "string" },
-            explanation: { type: "string" }
+            explanation: { type: "string" },
+            requiresPassage: { type: "boolean" }
           },
           required: ["id","type","question","answer","explanation"]
         }
       }
     },
-    required: ["title","subject","year","passage","items"]
+    required: ["title","subject","year","items"]
   };
 
   const prompt = [
-    "Bina kuiz BM sekolah rendah Malaysia dengan PETIKAN TEKS.",
+    "Bina kuiz BM sekolah rendah Malaysia yang PELBAGAI dan MENARIK.",
     "Gunakan konteks silibus/nota yang diberi. Pastikan soalan sesuai Tahun yang diminta.",
     "",
-    "FORMAT KUIZ:",
-    "1. WAJIB buat 'passage' (petikan teks bacaan) 100-200 patah perkataan yang sesuai dengan topik",
-    "2. Petikan mestilah cerita atau teks pemahaman yang menarik untuk murid baca",
-    "3. SEMUA soalan mesti merujuk kepada petikan tersebut",
-    "4. Campur 60% MCQ dan 40% jawapan pendek",
-    "5. Beri jawapan dan penerangan ringkas",
+    "JENIS-JENIS SOALAN (campur semua jenis):",
     "",
-    "PENTING - Penggunaan petikan dalam soalan:",
-    "- WAJIB letak petikan tunggal '...' untuk simpulan bahasa (contoh: 'mengambil hati', 'buah tangan')",
-    "- WAJIB letak petikan tunggal '...' untuk peribahasa",
-    "- WAJIB letak petikan tunggal '...' untuk perkataan atau frasa yang dikaji",
-    "- Soalan mesti rujuk \"petikan\" atau \"teks di atas\" supaya murid tahu kena baca petikan",
+    "1. SOALAN PEMAHAMAN (30-40% daripada kuiz) - requiresPassage: true",
+    "   - Buat 'passage' (petikan cerita/teks) 80-150 patah perkataan yang MUDAH dan menarik",
+    "   - Cerita tentang kehidupan harian, kawan, keluarga, sekolah",
+    "   - Soalan tentang pemahaman cerita:",
+    "     * \"Berdasarkan petikan, mengapakah...\"",
+    "     * \"Siapakah watak utama dalam cerita?\"",
+    "     * \"Apakah pengajaran yang boleh kita dapat?\"",
     "",
-    "Contoh struktur soalan yang BETUL:",
-    "- \"Berdasarkan petikan, apakah maksud simpulan bahasa 'mengambil hati'?\"",
-    "- \"Mengikut teks di atas, siapakah watak utama dalam cerita ini?\"",
-    "- \"Apakah pengajaran yang boleh kita dapat daripada petikan?\"",
+    "2. SOALAN TATABAHASA (20-30%) - requiresPassage: false",
+    "   - Kata nama, kata kerja, kata adjektif, kata sendi",
+    "   - Ayat aktif/pasif, tunggal/jamak",
+    "   - Ejaan dan tanda baca",
+    "   Contoh: \"Pilih kata adjektif yang betul: Rumah itu sangat ___. (besar/berjalan/merah)\"",
+    "",
+    "3. SOALAN SIMPULAN BAHASA & PERIBAHASA (20-30%) - requiresPassage: false",
+    "   - WAJIB guna petikan tunggal '...' pada frasa",
+    "   - Boleh beri contoh ayat ringkas untuk konteks",
+    "   Contoh: \"Apakah maksud 'mengambil hati'?\"",
+    "   Contoh dengan ayat: \"'Buah tangan' bermaksud... (Ayat: Saya bawa buah tangan untuk nenek)\"",
+    "",
+    "4. SOALAN KOSA KATA (10-20%) - requiresPassage: false",
+    "   - Sinonim, antonim, makna perkataan",
+    "   - Bina ayat dengan perkataan tertentu",
+    "   Contoh: \"Antonim bagi perkataan 'tinggi' ialah ___\"",
+    "",
+    "PANDUAN UMUM:",
+    "- Campur 60% MCQ dan 40% jawapan pendek",
+    "- Jika ada petikan, hanya 2-3 soalan je pasal petikan tu",
+    "- Soalan lain tentang tatabahasa, simpulan bahasa, dll (tak perlu petikan)",
+    "- Buat soalan yang sesuai dengan umur dan Tahun murid",
+    "- Beri penerangan ringkas untuk setiap jawapan",
     "",
     `Topik: ${body.topic}`,
     `Kesukaran: ${body.difficulty}`,
     `Bilangan soalan: ${body.count}`,
+    "",
     "Keluarkan dalam JSON yang sah mengikut skema yang diberi.",
+    "INGAT: 'passage' boleh null jika tiada soalan pemahaman. Set requiresPassage:true untuk soalan yang perlu petikan.",
   ].join("\n");
 
   const resp = await openai.chat.completions.create({

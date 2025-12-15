@@ -16,13 +16,14 @@ type QuizItem = {
   choices?: string[];
   answer: string;
   explanation: string;
+  requiresPassage?: boolean;
 };
 
 type Quiz = {
   title: string;
   subject: string;
   year: number;
-  passage: string;
+  passage?: string | null;
   items: QuizItem[];
 };
 
@@ -219,8 +220,8 @@ export default function QuizMode({ child, subject }: { child: ChildProfile; subj
               />
             </div>
 
-            {/* Passage Card - shown on every question */}
-            {quiz.passage && (
+            {/* Passage Card - only shown for questions that require it */}
+            {quiz.passage && currentQuestion.requiresPassage && (
               <div className="quiz-passage-card">
                 <div className="passage-header">
                   <span className="passage-icon">📖</span>
