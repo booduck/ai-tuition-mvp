@@ -125,6 +125,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Quiz JSON parse failed", raw: responseText }, { status: 500 });
   }
 
+  // VALIDATION: Check for passage consistency
+  // If any question mentions "Berdasarkan petikan" or "Mengikut cerita",
+  // there MUST be a passage and requiresPassage must be true
+  const hasPassageKeywords = (question: string) => {
+    const keywords = ["berdasarkan petikan", "mengikut cerita", "mengikut petikan", "daripada petikan"];
+    const lowerQ = question.toLowerCase();
+    return keywords.some(kw => lowerQ.includes(kw));
+  };
+
+  const questionsWithPassageKeywords = quiz.items?.filter((item: any) =>
+    hasPassageKeywords(item.question || "")
+  ) || [];
+
+  if (questionsWithPassageKeywords.length > 0) {
+    // There are questions that reference passage
+    if (!quiz.passage || quiz.passage.trim().length === 0) {
+      return NextResponse.json({
+        error: "Quiz validation failed: Questions reference passage but no passage provided",
+        details: "AI generated questions with 'Berdasarkan petikan' but passage is null/empty"
+      }, { status: 500 });
+    }
+
+    // Check that all these questions have requiresPassage: true
+    const missingFlag = questionsWithPassageKeywords.filter((item: any) =>
+      item.requiresPassage !== true
+    );
+
+    if (missingFlag.length > 0) {
+      return NextResponse.json({
+        error: "Quiz validation failed: Questions reference passage but requiresPassage is not set to true",
+        details: `${missingFlag.length} question(s) need requiresPassage: true`
+      }, { status: 500 });
+    }
+  }
+
   // Save attempt placeholder (score later)
   const attempt = await supabaseAdmin.from("quiz_attempts").insert({
     child_id: body.childId,
